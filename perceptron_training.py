@@ -17,6 +17,10 @@ def main(argv):
   parser = argparse.ArgumentParser()
   parser.add_argument('-p', '--positive_dir', required = True)
   parser.add_argument('-n', '--negative_dir', required = True)
+  
+  parser.add_argument('-o', '--positive_test', required = True)
+  parser.add_argument('-e', '--negative_test', required = True)
+  
   parser.add_argument('-m', '--model', required = True)
   parser.add_argument('-s', '--filesuffix', default='.txt')
   opts = parser.parse_args()
@@ -26,6 +30,10 @@ def main(argv):
     [(opts.negative_dir + "/" + f, 0) for f in os.listdir(opts.negative_dir) if f.endswith(opts.filesuffix)]
   random.shuffle(files_labels)
   filelist = [fl[0] for fl in files_labels]
+
+  files_labels_test = \
+    [(opts.positive_test + "/" + f, 1) for f in os.listdir(opts.positive_test) if f.endswith(opts.filesuffix)] + \
+    [(opts.negative_test + "/" + f, 0) for f in os.listdir(opts.negative_test) if f.endswith(opts.filesuffix)]
 
   vocab = vocabulary(filelist, vocab_size)
   weights = {}
@@ -45,7 +53,17 @@ def main(argv):
     print('-' * 20)
     print "iteration: ", i + 1
     print "train errors: ", error_count
-  print "number of instances: ", len(files_labels)
+    
+    error_count = 0
+    for input_file, desired_output in files_labels_test:
+      features = set(perceptron_utils.filtered_tokens(input_file, vocab))
+      result = perceptron_utils.prediction(features, weights)
+      if desired_output != result:
+        error_count += 1
+    print "test errors: ", error_count
+
+  print "number of train instances: ", len(files_labels)
+  print "number of test instances: ", len(files_labels_test)
   with open(opts.model, 'w') as modelfile:
     json.dump(weights, modelfile)
   
